@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscador de Establecimientos de Salud</title>
+    <!-- Incluyendo Tailwind CSS para un diseño moderno y responsivo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Incluyendo la fuente Inter para una mejor tipografía -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Estilos personalizados y de base */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Estilo para el spinner de carga */
+        .loader {
+            border-top-color: #3498db;
+            -webkit-animation: spinner 1.5s linear infinite;
+            animation: spinner 1.5s linear infinite;
+        }
+        @-webkit-keyframes spinner {
+            0% { -webkit-transform: rotate(0deg); }
+            100% { -webkit-transform: rotate(360deg); }
+        }
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Ajuste para que la tabla no desborde en móviles */
+        .table-container {
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+        
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-bold text-gray-900">Buscador de Establecimientos de Salud</h1>
+            <p class="mt-2 text-md text-gray-600">Encuentra información de establecimientos de la DIRIS Lima Norte.</p>
+        </header>
+
+        <!-- Sección de Filtros -->
+        <div class="bg-white p-6 rounded-xl shadow-md mb-8">
+            <form id="search-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Filtro por Nombre -->
+                <div>
+                    <label for="nombre" class="block text-sm font-medium text-gray-700 mb-1">Nombre del Establecimiento</label>
+                    <input type="text" id="nombre" name="nombre" placeholder="Ej: Santa Luzmila" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <!-- Filtro por Distrito -->
+                <div>
+                    <label for="distrito" class="block text-sm font-medium text-gray-700 mb-1">Distrito</label>
+                    <select id="distrito" name="distrito" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Todos los distritos</option>
+                    </select>
+                </div>
+                <!-- Filtro por Categoría -->
+                <div>
+                    <label for="categoria" class="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
+                    <select id="categoria" name="categoria" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Todas las categorías</option>
+                    </select>
+                </div>
+                <!-- Filtro por Estado -->
+                <div>
+                    <label for="estado" class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                    <select id="estado" name="estado" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Todos los estados</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+
+        <!-- Indicador de Carga y Resultados -->
+        <div id="loading-indicator" class="text-center py-10">
+            <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-24 w-24 mx-auto"></div>
+            <p class="mt-4 text-lg text-gray-600">Cargando datos desde Google Sheets...</p>
+            <p class="mt-1 text-sm text-gray-500">Esto puede tardar unos segundos.</p>
+        </div>
+
+        <!-- Contenedor de la Tabla de Resultados -->
+        <div id="results-container" class="bg-white rounded-xl shadow-md hidden">
+             <div class="flex justify-between items-center p-4 border-b">
+                <h2 class="text-xl font-semibold">Resultados</h2>
+                <div id="results-count" class="text-gray-600 font-medium"></div>
+            </div>
+            <div class="table-container">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Distrito</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Responsable</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-body" class="bg-white divide-y divide-gray-200">
+                        <!-- Las filas de resultados se insertarán aquí dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="no-results" class="text-center py-12 hidden">
+                <p class="text-lg text-gray-500">No se encontraron establecimientos con los criterios seleccionados.</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- CONFIGURACIÓN ---
+        const SHEET_ID = '1e0Z09iA4HnQNdKL6HeeUrO2_fhDqEZtXogJiV-knMZ0';
+        const GOOGLE_SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
+
+        // --- ELEMENTOS DEL DOM ---
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const resultsContainer = document.getElementById('results-container');
+        const resultsBody = document.getElementById('results-body');
+        const resultsCount = document.getElementById('results-count');
+        const noResultsMessage = document.getElementById('no-results');
+        const form = document.getElementById('search-form');
+        const nombreInput = document.getElementById('nombre');
+        const distritoSelect = document.getElementById('distrito');
+        const categoriaSelect = document.getElementById('categoria');
+        const estadoSelect = document.getElementById('estado');
+
+        // Almacenará todos los datos de la hoja de cálculo
+        let allData = [];
+        // **NUEVO**: Almacenará las claves de columna encontradas dinámicamente.
+        let columnKeys = {};
+
+        // --- FUNCIONES ---
+
+        /**
+         * **FIXED**: Función para encontrar dinámicamente la clave de una columna.
+         * Busca una clave que contenga el término de búsqueda, ignorando mayúsculas/minúsculas y espacios.
+         * @param {Array<string>} headers - Un array con todos los nombres de las cabeceras.
+         * @param {string} searchTerm - El término a buscar (ej. "código", "responsable").
+         * @returns {string|null} El nombre original de la cabecera o null si no se encuentra.
+         */
+        function findHeaderKey(headers, searchTerm) {
+            const normalizedSearchTerm = searchTerm.toLowerCase();
+            for (const header of headers) {
+                if (header && header.toLowerCase().includes(normalizedSearchTerm)) {
+                    return header;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Procesa la respuesta JSON de la API de Visualización de Google.
+         * @param {object} gvizResponse - El objeto JSON devuelto por la API.
+         * @returns {Array<Object>} Un array de objetos, donde cada objeto representa una fila.
+         */
+        function processGvizResponse(gvizResponse) {
+            if (!gvizResponse || !gvizResponse.table || !gvizResponse.table.rows || gvizResponse.table.rows.length === 0) {
+                return [];
+            }
+
+            const originalHeaders = gvizResponse.table.cols.map(col => col.label || '');
+            
+            // **FIXED**: Se buscan las claves de columna dinámicamente.
+            columnKeys = {
+                code: findHeaderKey(originalHeaders, 'código'),
+                name: findHeaderKey(originalHeaders, 'nombre del establecimiento'),
+                district: findHeaderKey(originalHeaders, 'distrito'),
+                category: findHeaderKey(originalHeaders, 'categoria'),
+                status: findHeaderKey(originalHeaders, 'estado'),
+                responsible: findHeaderKey(originalHeaders, 'responsable'),
+            };
+
+            console.log("Claves de columna encontradas:", columnKeys);
+
+            const data = [];
+            gvizResponse.table.rows.forEach(row => {
+                const entry = {};
+                row.c.forEach((cell, index) => {
+                    const headerName = originalHeaders[index];
+                    entry[headerName] = cell ? cell.v : null;
+                });
+                data.push(entry);
+            });
+
+            return data;
+        }
+
+        /**
+         * Popula los menús desplegables (selects) con opciones únicas extraídas de los datos.
+         */
+        function populateFilters() {
+            const distritos = new Set();
+            const categorias = new Set();
+            const estados = new Set();
+
+            allData.forEach(row => {
+                if (row[columnKeys.district] && String(row[columnKeys.district]).trim() !== '') distritos.add(String(row[columnKeys.district]).trim());
+                if (row[columnKeys.category] && String(row[columnKeys.category]).trim() !== '') categorias.add(String(row[columnKeys.category]).trim());
+                if (row[columnKeys.status] && String(row[columnKeys.status]).trim() !== '') estados.add(String(row[columnKeys.status]).trim());
+            });
+
+            [...distritos].sort().forEach(val => {
+                distritoSelect.innerHTML += `<option value="${val}">${val}</option>`;
+            });
+            [...categorias].sort().forEach(val => {
+                categoriaSelect.innerHTML += `<option value="${val}">${val}</option>`;
+            });
+            [...estados].sort().forEach(val => {
+                estadoSelect.innerHTML += `<option value="${val}">${val}</option>`;
+            });
+        }
+
+        /**
+         * Muestra los datos filtrados en la tabla de resultados.
+         * @param {Array<Object>} data - El array de establecimientos a mostrar.
+         */
+        function displayResults(data) {
+            resultsBody.innerHTML = ''; 
+
+            if (data.length === 0) {
+                noResultsMessage.classList.remove('hidden');
+                resultsCount.textContent = '0 Resultados';
+            } else {
+                noResultsMessage.classList.add('hidden');
+                resultsCount.textContent = `${data.length} Resultado(s)`;
+                data.forEach(row => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-gray-50';
+                    
+                    const codigoUnico = row[columnKeys.code] ? String(row[columnKeys.code]) : '';
+                    const codigoFormateado = codigoUnico ? codigoUnico.padStart(8, '0') : 'N/A';
+                    
+                    const nombreEstablecimiento = row[columnKeys.name] || 'N/A';
+                    const distrito = row[columnKeys.district] || 'N/A';
+                    const categoria = row[columnKeys.category] || 'N/A';
+                    const estado = row[columnKeys.status] || 'N/A';
+                    const responsable = row[columnKeys.responsible] || 'N/A';
+
+                    tr.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-mono text-gray-800">${codigoFormateado}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">${nombreEstablecimiento}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-800">${distrito}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                ${categoria}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${String(estado).toUpperCase() === 'ACTIVO' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                ${estado}
+                            </span>
+                        </td>
+                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${responsable}</td>
+                    `;
+                    resultsBody.appendChild(tr);
+                });
+            }
+        }
+
+        /**
+         * Filtra los datos basado en los valores actuales de los campos del formulario.
+         */
+        function filterData() {
+            const nombreFilter = nombreInput.value.trim().toLowerCase();
+            const distritoFilter = distritoSelect.value;
+            const categoriaFilter = categoriaSelect.value;
+            const estadoFilter = estadoSelect.value;
+
+            const filteredData = allData.filter(row => {
+                const nombreMatch = !nombreFilter || (row[columnKeys.name] && String(row[columnKeys.name]).toLowerCase().includes(nombreFilter));
+                const distritoMatch = !distritoFilter || row[columnKeys.district] === distritoFilter;
+                const categoriaMatch = !categoriaFilter || row[columnKeys.category] === categoriaFilter;
+                const estadoMatch = !estadoFilter || row[columnKeys.status] === estadoFilter;
+                
+                return nombreMatch && distritoMatch && categoriaMatch && estadoMatch;
+            });
+
+            displayResults(filteredData);
+        }
+
+        // --- INICIALIZACIÓN ---
+        
+        async function initializeApp() {
+            try {
+                const response = await fetch(GOOGLE_SHEET_URL);
+                if (!response.ok) {
+                    throw new Error(`No se pudo conectar con la API de Google Sheets. Estado: ${response.status}.`);
+                }
+                
+                let textResponse = await response.text();
+                const jsonpData = textResponse.match(/google\.visualization\.Query\.setResponse\((.*)\)/s);
+                
+                if (!jsonpData || !jsonpData[1]) {
+                    throw new Error("La respuesta de la API no tiene el formato JSONP esperado.");
+                }
+
+                const jsonData = JSON.parse(jsonpData[1]);
+                
+                allData = processGvizResponse(jsonData);
+                
+                if (allData.length === 0) {
+                     throw new Error("La API devolvió datos pero no se pudieron procesar. Revisa el formato de la hoja.");
+                }
+
+                populateFilters();
+                displayResults(allData);
+
+                loadingIndicator.classList.add('hidden');
+                resultsContainer.classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Error al inicializar la aplicación:", error);
+                loadingIndicator.innerHTML = `
+                    <p class="text-red-600 font-bold">Error Crítico al Cargar Datos</p>
+                    <p class="text-gray-600 mt-2">No se pudo obtener la información. Asegúrate de que la hoja de cálculo esté compartida como "Cualquier persona con el enlace puede ver".</p>
+                    <p class="text-sm text-gray-500 mt-1">Detalle: ${error.message}</p>
+                `;
+            }
+        }
+
+        // --- EVENT LISTENERS ---
+        
+        document.addEventListener('DOMContentLoaded', initializeApp);
+
+        nombreInput.addEventListener('input', filterData);
+        distritoSelect.addEventListener('change', filterData);
+        categoriaSelect.addEventListener('change', filterData);
+        estadoSelect.addEventListener('change', filterData);
+        
+        form.addEventListener('submit', (e) => e.preventDefault());
+
+    </script>
+</body>
+</html>
